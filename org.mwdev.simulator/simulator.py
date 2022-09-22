@@ -4,18 +4,21 @@ import matplotlib.pyplot as plt
 from time import time
 from snake import Snake
 from utils import calculate_fps
+from gui.components import Board
+from agent import DefaultAgent
 import os
 
 
 class Simulator:
 
-    def __init__(self, model, fps=60, caption="AI Snake Simulator"):
+    def __init__(self, width, height, model, fps=2, caption="AI Snake Simulator"):
         pygame.init()
         self.model = model
-        self.window = pygame.display.set_mode(self.model.screen_dims)
+        self.window = pygame.display.set_mode((width, height))
         self.caption = caption
         self.fps = fps
         self.clock = pygame.time.Clock()
+        self.board = Board(self.window, width, height, self.model.width, self.model.height)
 
         self.calc_fps = 0
         self.current_timestamp = None
@@ -47,7 +50,8 @@ class Simulator:
             self.update_display()
 
     def update_display(self):
-        pass
+        self.board.render(self.model.board)
+        pygame.display.update()
 
     def paint_board(self):
         pass
@@ -102,7 +106,7 @@ class SimulatorModel:
         For now, just start in the upper right corner
         :return:
         """
-        return Snake(np.array([0, 0], self.agent, starting_direction=Snake.get_direction("right")))
+        return Snake(start_pos=np.array([0, 0]), agent=self.agent, starting_direction=Snake.get_direction("right"))
 
     def generate_fruit_position(self):
         """
@@ -117,7 +121,7 @@ class SimulatorModel:
         while invalid:
             x = np.random.randint(0, self.width)
             y = np.random.randint(0, self.height)
-            if self.board[x, y] == np.array([0, 0]):
+            if np.all(self.board[x, y] == np.array([0, 0])):
                 invalid = False
             elif self._debug:
                 invalid_count += 1
@@ -133,17 +137,28 @@ class SimulatorModel:
         """
         snake_pos = self.snake.head.current_position
         wall_hit = self.is_out_of_bounds(snake_pos)
-        food = self.fruit == snake_pos
+        food = np.all(self.fruit == snake_pos)
         self.board[self.fruit[0], self.fruit[1]] = np.array([0, 0])
-        self.snake.update(self.board, inputs=self.board, keys_pressed=keys_pressed, wall_hit=wall_hit, food=food)
+        snake_positions = self.snake.update(self.board, inputs=self.board, keys_pressed=keys_pressed, wall_hit=wall_hit, food=food)
+        snake_positions = np.array(snake_positions)
+        refresh_fruit_pos = wall_hit or food
+        if len(snake_positions) > 0:
+            value, counts = np.unique(snake_positions, return_counts=True, axis=0)
+            if max(counts) > 1:
+                self.reset()
+                refresh_fruit_pos = True
         if wall_hit:
-            score = self.snake.reset()
-            self.high_score = max(self.high_score, score)
-            self.scores.append(score)
-        if food:
+            self.reset()
+        if refresh_fruit_pos:
             self.fruit = self.generate_fruit_position()
         self.board[self.fruit[0], self.fruit[1]] = np.array([0, 1])
 
+    def reset(self):
+        score = self.snake.reset()
+        self.high_score = max(self.high_score, score)
+        self.scores.append(score)
+        self.board = np.zeros((self.width, self.height, 2))
+        self.board[0, 0, 0] = 1
 
     def start_headless_simulation(self):
         """
@@ -154,7 +169,8 @@ class SimulatorModel:
         pass
 
     def is_out_of_bounds(self, position):
-        return 0 > position[0] >= self.width or 0 > position[1] >= self.height
+        return 0 > position[0] or position[0] >= self.width \
+                or position[1] < 0 or position[1] >= self.height
 
     def print_current_state(self):
         """
@@ -169,11 +185,11 @@ class SimulatorModel:
 def main():
 
     # step 1 - create an Agent
-    agent = None
+    agent = DefaultAgent(0, 4)
     # step 2 - create a SimulatorModel
-    model = SimulatorModel(100, 100, agent=agent, debug=True)
+    model = SimulatorModel(25, 25, agent=agent, debug=True)
     # step 3 - create a Simulator
-    simulator = Simulator(model, fps=60, caption="AI Snake Simulator")
+    simulator = Simulator(width=800, height=800, model=model, fps=10, caption="AI Snake Simulator")
 
     # final step - run the Simulator!
     simulator.start()

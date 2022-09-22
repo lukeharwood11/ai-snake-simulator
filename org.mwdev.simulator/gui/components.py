@@ -21,7 +21,13 @@ class Board:
         pass
 
     def update(self, board_model):
-        pass
+        for row in board_model:
+            for col in row:
+                if col[0] == 1:
+                    pass
+                if col[0] == 1:
+                    pass
+
 
 class Label:
 

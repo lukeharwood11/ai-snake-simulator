@@ -78,9 +78,11 @@ class Snake:
         self.head.add_cell()
 
     def reset(self):
+        length = self.length
         self.length = 1
         self.head.die()
         self.head = SnakeCell(next_cell=None, position=self.start_pos, head_cell=True)
+        return length
 
     def update(self, board, inputs, keys_pressed, wall_hit, food):
         """
@@ -89,9 +91,9 @@ class Snake:
         direction = self.agent.update(inputs, food, wall_hit, keys_pressed)
         assert direction <= 3, "Direction {} out of bounds.".format(direction)
         self.current_direction = direction
-        self.step(board)
+        self.step(board, food)
 
-    def step(self, board):
+    def step(self, board, food):
         x = 0
         y = 0
         if self.current_direction == 0:
@@ -107,4 +109,6 @@ class Snake:
             # go down
             y = 1
         self.head.shift(board, direction=np.array([x, y]))
+        if food:
+            self.eat()
 

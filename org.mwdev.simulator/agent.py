@@ -10,6 +10,7 @@ class Agent(ABC):
     """
     - Abstract agent class
     """
+
     @abstractmethod
     def update(self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None) -> list[int]:
         """
@@ -38,4 +39,19 @@ class Agent(ABC):
         :param path: the path to the model
         :return: None
         """
+        pass
+
+
+class DefaultAgent(Agent):
+
+    def __init__(self, num_inputs, num_outputs):
+        super().__init__(num_inputs, num_outputs)
+
+    def update(self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None) -> list[int]:
+        pass
+
+    def save_model(self, path):
+        pass
+
+    def load_model(self, path):
         pass

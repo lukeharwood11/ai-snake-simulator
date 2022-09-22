@@ -2,6 +2,27 @@ import numpy as np
 import pygame
 import time
 
+class Board:
+
+    def __init__(self, parent_width, parent_height, width, height):
+        self.parent_width = parent_width
+        self.parent_height = parent_height
+        self.width = width
+        self.height = height
+
+        parent_comparator = min(self.parent_width, self.parent_height)
+        cell_comparator = max(self.width, self.height)
+        self.cell_width = parent_comparator / cell_comparator
+
+    def params(self):
+        pass
+
+    def render(self):
+        pass
+
+    def update(self, board_model):
+        pass
+
 class Label:
 
     def __init__(self, position, text="", size=12, font=None, color=(0, 0, 0), refresh_count=None, background=None,
@@ -76,7 +97,7 @@ class TimedLabel(Label):
         self.timeout = timeout
         self.queue = queue
 
-    def render(self, window):
+    def render(self, window, position=None):
         if (time.time() - self.time_created) < self.timeout:
             text = self.font.render(self.text, self.anti_alias, self.color, self.background)
             window.blit(text, self.position)

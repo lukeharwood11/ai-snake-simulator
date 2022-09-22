@@ -78,11 +78,21 @@ class SimulatorModel:
         self.snake = self.initialize_snake()
         # always must have a position, if it is None, then the snake wins (game over)
         self.fruit = self.generate_fruit_position()  # position
+        # stats
+        self.high_score = 0
+        self.scores = []
         # private variables
         self._debug = debug
 
+    def iteration_count(self):
+        """
+        Get the iteration number that we are on
+        :return:
+        """
+        return len(self.scores) + 1
+
     def initialize_simulation(self):
-        pass
+        self.generate_board()
 
     def generate_board(self):
         pass
@@ -99,7 +109,21 @@ class SimulatorModel:
         place the fruit in a random location that the snake does not currently occupy
         :return:
         """
-        return 0, 0
+        # trial and error solution
+        invalid = True
+        x = 0
+        y = 0
+        invalid_count = 0
+        while invalid:
+            x = np.random.randint(0, self.width)
+            y = np.random.randint(0, self.height)
+            if self.board[x, y] == np.array([0, 0]):
+                invalid = False
+            elif self._debug:
+                invalid_count += 1
+                print("WARNING: invalid fruit position... {}".format(invalid_count))
+        self.board[x, y] = np.array([0, 1])
+        return np.array([x, y])
 
     def update_state(self, keys_pressed):
         """
@@ -112,6 +136,10 @@ class SimulatorModel:
         food = self.fruit == snake_pos
         self.board[self.fruit[0], self.fruit[1]] = np.array([0, 0])
         self.snake.update(self.board, inputs=self.board, keys_pressed=keys_pressed, wall_hit=wall_hit, food=food)
+        if wall_hit:
+            score = self.snake.reset()
+            self.high_score = max(self.high_score, score)
+            self.scores.append(score)
         if food:
             self.fruit = self.generate_fruit_position()
         self.board[self.fruit[0], self.fruit[1]] = np.array([0, 1])
@@ -120,6 +148,7 @@ class SimulatorModel:
     def start_headless_simulation(self):
         """
         WARNING - assumes that a GUI simulation is not being run
+        TODO implement
         :return:
         """
         pass

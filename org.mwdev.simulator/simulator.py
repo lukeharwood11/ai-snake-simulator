@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from time import time
 from snake import Snake
 from utils import calculate_fps
+import os
 
 
 class Simulator:
@@ -60,7 +61,7 @@ class Simulator:
 
 class SimulatorModel:
 
-    def __init__(self, width, height, debug=True):
+    def __init__(self, width, height, agent, debug=True):
         """
         Keeps track of simulation domain
         - Goal is to be able to run the simulator headless (without a GUI)
@@ -71,6 +72,7 @@ class SimulatorModel:
         self.board_width = (width, height)
         self.width = width
         self.height = height
+        self.agent = agent
         # board consists of width, height, and categorical (snake/no-snake, fruit/no-fruit)
         self.board = np.zeros((width, height, 2))
         self.snake = self.initialize_snake()
@@ -90,13 +92,14 @@ class SimulatorModel:
         For now, just start in the upper right corner
         :return:
         """
-        return Snake()
+        return Snake(np.array([0, 0], self.agent, starting_direction=Snake.get_direction("right")))
 
     def generate_fruit_position(self):
         """
         place the fruit in a random location that the snake does not currently occupy
         :return:
         """
+        return 0, 0
 
     def update_state(self, keys_pressed):
         """
@@ -104,7 +107,25 @@ class SimulatorModel:
         :param keys_pressed:
         :return:
         """
+        snake_pos = self.snake.head.current_position
+        wall_hit = self.is_out_of_bounds(snake_pos)
+        food = self.fruit == snake_pos
+        self.board[self.fruit[0], self.fruit[1]] = np.array([0, 0])
+        self.snake.update(self.board, inputs=self.board, keys_pressed=keys_pressed, wall_hit=wall_hit, food=food)
+        if food:
+            self.fruit = self.generate_fruit_position()
+        self.board[self.fruit[0], self.fruit[1]] = np.array([0, 1])
+
+
+    def start_headless_simulation(self):
+        """
+        WARNING - assumes that a GUI simulation is not being run
+        :return:
+        """
         pass
+
+    def is_out_of_bounds(self, position):
+        return 0 > position[0] >= self.width or 0 > position[1] >= self.height
 
     def print_current_state(self):
         """
@@ -113,11 +134,20 @@ class SimulatorModel:
         pass
 
     def handle_close_event(self):
-        pass
+        self.agent.save_model(os.path.join("assets", "models"))
 
 
 def main():
-    pass
+
+    # step 1 - create an Agent
+    agent = None
+    # step 2 - create a SimulatorModel
+    model = SimulatorModel(100, 100, agent=agent, debug=True)
+    # step 3 - create a Simulator
+    simulator = Simulator(model, fps=60, caption="AI Snake Simulator")
+
+    # final step - run the Simulator!
+    simulator.start()
 
 
 if __name__ == "__main__":

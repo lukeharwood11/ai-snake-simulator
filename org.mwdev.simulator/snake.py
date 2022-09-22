@@ -13,12 +13,20 @@ class SnakeCell:
         self.current_position = position
         self.previous_position = None
 
-    def shift(self):
+    def shift(self, board, direction=None):
         self.previous_position = self.current_position
-        self.current_position = self.next_cell.previous_position
+        if self.head_cell:
+            assert direction is not None, "Direction cannot be None for 'Head' SnakeCell"
+            self.current_position = self.current_position + direction
+        else:
+            self.current_position = self.next_cell.previous_position
+        # clear the position on the board where we were
+        board[self.previous_position[0], self.previous_position[1]] = np.array([0, 0])
+        # activate the position on the board where we are
+        board[self.current_position[0], self.current_position[1]] = np.array([1, 0])
         if self.tail is not None:
             # meaning we have more cells after us to update
-            self.tail.shift()
+            self.tail.shift(board)
 
     def die(self):
         if self.tail is not None:
@@ -43,11 +51,27 @@ class SnakeCell:
 
 class Snake:
 
-    def __init__(self, start_pos, agent) -> None:
+    def __init__(self, start_pos, agent, starting_direction=2) -> None:
         self.head = SnakeCell(None, start_pos, head_cell=True)
         self.start_pos = start_pos
         self.agent = agent
         self.length = 1
+        self.current_direction = starting_direction  # default direction is right
+
+    @staticmethod
+    def get_direction(direction):
+        """
+        :param direction: 'left', 'right', 'up', 'down'
+        :return: int representation
+        """
+        if direction == 'left':
+            return 0
+        if direction == 'up':
+            return 1
+        if direction == 'right':
+            return 2
+        if direction == 'down':
+            return 3
 
     def eat(self):
         self.length += 1
@@ -58,21 +82,29 @@ class Snake:
         self.head.die()
         self.head = SnakeCell(next_cell=None, position=self.start_pos, head_cell=True)
 
-    def step(self, inputs, keys_pressed, wall_hit, food):
+    def update(self, board, inputs, keys_pressed, wall_hit, food):
         """
         :return:
         """
         direction = self.agent.update(inputs, food, wall_hit, keys_pressed)
-        if direction == 0:
-            # left
-            pass
-        elif direction == 1:
-            # up
-            pass
-        elif direction == 2:
-            # right
-            pass
-        elif direction == 3:
-            # down
-            pass
+        assert direction <= 3, "Direction {} out of bounds.".format(direction)
+        self.current_direction = direction
+        self.step(board)
+
+    def step(self, board):
+        x = 0
+        y = 0
+        if self.current_direction == 0:
+            # go left
+            x = -1
+        if self.current_direction == 1:
+            # go up
+            y = -1
+        if self.current_direction == 2:
+            # go right
+            x = 1
+        if self.current_direction == 3:
+            # go down
+            y = 1
+        self.head.shift(board, direction=np.array([x, y]))
 

@@ -94,7 +94,7 @@ class QLearningAgent(Agent):
         self._model.add(Conv2D(64, (2, 2), activation='relu', padding='valid'))
         self._model.add(Conv2D(128, (1, 1), activation='relu', padding='valid'))
         self._model.add(Flatten())
-        self._model.add(Dense(64, activation='elu'))
+        self._model.add(Dense(512, activation='elu'))
         self._model.add(Dense(self.num_outputs, activation='linear'))
         self._model.compile(loss='mse', optimizer=Adam(learning_rate=self.alpha, decay=alpha_decay))
         if self._debug:

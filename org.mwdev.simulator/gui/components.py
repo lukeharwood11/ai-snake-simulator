@@ -2,26 +2,61 @@ import numpy as np
 import pygame
 import time
 
+from _global import FOOD_COLOR, SNAKE_COLOR
+
+
 class Board:
 
-    def __init__(self, parent_width, parent_height, width, height):
+    def __init__(self, window, parent_width, parent_height, width, height):
+        """
+        :param window:
+        :param parent_width:
+        :param parent_height:
+        :param width:
+        :param height:
+        """
         self.parent_width = parent_width
         self.parent_height = parent_height
         self.width = width
         self.height = height
-
-        parent_comparator = min(self.parent_width, self.parent_height)
+        self.window = window
+        self.parent_comparator = min(self.parent_width, self.parent_height)
         cell_comparator = max(self.width, self.height)
-        self.cell_width = parent_comparator / cell_comparator
+        self.cell_width = int(self.parent_comparator / cell_comparator)
+
+        self.params = None
 
     def params(self):
         pass
 
-    def render(self):
-        pass
+    def render(self, board_model):
+        for x in range(self.width):
+            for y in range(self.height):
+                snake = board_model[x, y] == SNAKE_COLOR
+                food = board_model[x, y] == FOOD_COLOR
+                self.render_cell(pos=(x, y), snake=snake, food=food)
 
-    def update(self, board_model):
-        pass
+    def render_cell(self, pos, snake, food):
+        """
+        :param pos: top-left corner of cell
+        :param snake:
+        :param food:
+        :return:
+        """
+        pos_x = pos[0] * self.cell_width
+        pos_y = pos[1] * self.cell_width
+        rect = pygame.Rect(pos_x, pos_y, self.cell_width, self.cell_width)
+        cell_color = (255, 255, 255)
+        border_color = (0, 0, 0)
+        if snake:
+            cell_color = (0, 255, 0)
+        elif food:
+            cell_color = (255, 0, 0)
+        pygame.draw.rect(self.window, cell_color, rect=rect)
+        if snake:
+            pygame.draw.circle(self.window, (255, 0, 0), rect.center, radius=self.cell_width/2, width=10)
+        pygame.draw.rect(self.window, border_color, rect=rect, width=10 if snake else 1)
+
 
 class Label:
 

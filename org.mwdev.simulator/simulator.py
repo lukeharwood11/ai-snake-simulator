@@ -48,7 +48,7 @@ class Simulator:
             if t is not None:
                 self.calc_fps = calculate_fps(self.current_timestamp - t)
             keys_pressed = pygame.key.get_pressed()
-            run = not self.model.update_state(keys_pressed)
+            run = self.model.update_state(keys_pressed) or run
             self.model.print_current_state()
             self.update_display()
 
@@ -111,7 +111,7 @@ class SimulatorModel:
         self.board = np.zeros(self.input_shape)
         self.snake = self.initialize_snake()
         # always must have a position, if it is None, then the snake wins (game over)
-        self.food = self.generate_fruit_position()  # position
+        self.food = self.generate_food_position()  # position
         # stats
         self.high_score = 0
         self.max_iterations = max_iterations
@@ -133,11 +133,13 @@ class SimulatorModel:
         For now, just start in the upper right corner
         :return:
         """
-        return Snake(start_pos=np.array([0, 0]), agent=self.agent, starting_direction=Snake.get_direction("right"))
+        snake = Snake(start_pos=np.array([0, 0]), agent=self.agent, starting_direction=Snake.get_direction("right"))
+        self.board[snake.start_pos[0], snake.start_pos[1]] = SNAKE_COLOR
+        return snake
 
-    def generate_fruit_position(self):
+    def generate_food_position(self):
         """
-        place the fruit in a random location that the snake does not currently occupy
+        place the food in a random location that the snake does not currently occupy
         :return:
         """
         # trial and error solution
@@ -152,7 +154,8 @@ class SimulatorModel:
                 invalid = False
             elif self._debug:
                 invalid_count += 1
-                print("WARNING: invalid fruit position... {}".format(invalid_count))
+                print("WARNING: invalid food position... {}".format(invalid_count))
+        self.board[x, y] = FOOD_COLOR
         return np.array([x, y])
 
     def update_state(self, keys_pressed):
@@ -164,15 +167,15 @@ class SimulatorModel:
         snake_pos = self.snake.head.current_position
         wall_hit = self.is_out_of_bounds(snake_pos)
         food = np.all(self.food == snake_pos)
+        self.input_frame.update(self.board.copy())
         self.board[self.food[0], self.food[1]] = 0
-        self.input_frame.update(self.board)
         snake_hit = self.snake.update(self.board, inputs=self.input_frame.get_input(), keys_pressed=keys_pressed,
                                       wall_hit=wall_hit, food=food)
-        refresh_fruit_pos = wall_hit or food or snake_hit
+        refresh_food_pos = wall_hit or food or snake_hit
         if wall_hit or snake_hit:
             self.reset()
-        if refresh_fruit_pos:
-            self.food = self.generate_fruit_position()
+        if refresh_food_pos:
+            self.food = self.generate_food_position()
         # refresh the food_position
         self.board[self.food[0], self.food[1]] = FOOD_COLOR
         return self.iteration_num == self.max_iterations
@@ -228,28 +231,30 @@ def main():
         "qlearn": QLearningAgent(
             alpha=0.01,
             alpha_decay=0.01,
-            y=0.98,
-            epsilon=.90,
+            y=0.6,
+            epsilon=.98,
             input_shape=INPUT_SHAPE,
             num_actions=NUM_OUTPUT,
-            batch_size=16,
-            replay_mem_max=10_000,
+            batch_size=64,
+            replay_mem_max=500,
             save_after=100,
             load_latest_model=False,
             training_model=True,
             model_path=None,
-            train_each_step=True,
+            train_each_step=False,
             debug=False
         )
     }
     agent = agent_map['qlearn']
     # step 2 - create a SimulatorModel
-    model = SimulatorModel(10, 10, agent=agent, debug=True, max_iterations=1000)
+    model = SimulatorModel(INPUT_SHAPE[0], INPUT_SHAPE[1], agent=agent, debug=True, max_iterations=500)
+    agent.set_simulator(simulator=model)
     # step 3 - create a Simulator
-    # simulator = Simulator(width=800, height=800, model=model, fps=None, caption="AI Snake Simulator")
+    # simulator = Simulator(width=800, height=800, model=model, fps=10, caption="AI Snake Simulator")
 
     # final step - run the Simulator!
     model.start_headless_simulation()
+    # simulator.start()
 
 
 if __name__ == "__main__":

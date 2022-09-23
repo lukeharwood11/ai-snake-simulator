@@ -1,5 +1,5 @@
 import numpy as np
-
+from _global import SNAKE_COLOR, FOOD_COLOR
 
 class SnakeCell:
 
@@ -13,29 +13,38 @@ class SnakeCell:
         self.current_position = position
         self.previous_position = None
 
-    def shift(self, board, direction=None, positions=None):
-        assert self.head_cell or (positions is not None), "Positions cannot be None for a non-head-cell"
+    def check_for_collision(self, head_pos=None):
+        assert self.head_cell or (head_pos is not None), "Head Position cannot be None for a non-head-cell"
+        if self.head_cell:
+            head_pos = self.current_position
+        else:
+            if np.all(head_pos == self.current_position):
+                return True
+        if self.tail is not None:
+            # meaning we have more cells after us to update
+            return self.tail.check_for_collision(head_pos=head_pos)
+        else:
+            return False
+
+    def shift(self, board, direction=None):
         self.previous_position = self.current_position
         if self.head_cell:
             assert direction is not None, "Direction cannot be None for 'Head' SnakeCell"
             self.current_position = self.current_position + direction
-            positions = [self.current_position]
         else:
             self.current_position = self.next_cell.previous_position
-            positions.append(self.current_position)
+
         if 0 > self.current_position[0] or self.current_position[0] >= board.shape[0] \
                 or self.current_position[1] < 0 or self.current_position[1] >= board.shape[1]:
             # out of bounds, don't update...
             return
         # clear the position on the board where we were
-        board[self.previous_position[0], self.previous_position[1]] = np.array([0, 0])
+        if self.previous_position[0] < board.shape[1] and self.previous_position[1] < board.shape[1]:
+            board[self.previous_position[0], self.previous_position[1]] = 0
         # activate the position on the board where we are
-        board[self.current_position[0], self.current_position[1]] = np.array([1, 0])
+        board[self.current_position[0], self.current_position[1]] = SNAKE_COLOR
         if self.tail is not None:
-            # meaning we have more cells after us to update
-            return self.tail.shift(board, positions=positions)
-        else:
-            return positions
+            self.tail.shift(board)
 
     def die(self):
         if self.tail is not None:
@@ -57,11 +66,13 @@ class SnakeCell:
         else:
             self.tail.add_cell()
 
-    def check_collision(self, list):
-        position_set.add(self.current_position)
-        position_set.intersection()
+    def print(self):
+        if self.head_cell:
+            print("-0-")
+        else:
+            print("||")
         if self.tail is not None:
-            return self.tail.check_collision(position_set)
+            self.tail.print()
 
 class Snake:
 
@@ -106,11 +117,15 @@ class Snake:
         """
         :return:
         """
-        direction = self.agent.update(inputs, food, wall_hit, keys_pressed)
+        snake_collision = self.head.check_for_collision()
+        if snake_collision:
+            print("Collision.")
+        direction = self.agent.update(inputs, food, wall_hit or snake_collision, keys_pressed)
         # 4 = current direction
         assert direction <= 4, "Direction {} out of bounds.".format(direction)
         self.current_direction = direction if direction != 4 else self.current_direction
-        return self.step(board, food)
+        self.step(board, food)
+        return snake_collision
 
     def step(self, board, food):
         x = 0
@@ -127,8 +142,8 @@ class Snake:
         if self.current_direction == 3:
             # go down
             y = 1
-        positions = self.head.shift(board, direction=np.array([x, y]))
+        self.head.shift(board, direction=np.array([x, y]))
         if food:
             self.eat()
-        return positions
+            print("Length:", self.length)
 

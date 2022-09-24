@@ -61,7 +61,7 @@ class QLearningAgent(Agent):
 
     def __init__(self, alpha, alpha_decay, y, epsilon, input_shape, num_actions, batch_size, replay_mem_max,
                  save_after=None,
-                 load_latest_model=False, training_model=True, model_path=None, train_each_step=False, debug=False):
+                 load_latest_model=False, training_model=True, model_path=None, train_each_step=False, debug=False, timeout=True):
         # initialize Agent parent class
         # add one to num_inputs for current speed
         super(QLearningAgent, self).__init__(num_inputs=input_shape, num_outputs=num_actions)
@@ -85,6 +85,9 @@ class QLearningAgent(Agent):
         self._training_model = training_model  # boolean
         self._model_path = model_path
         self._train_each_step = train_each_step
+        self._timeout = timeout
+        self._simulator = None  # must set outside of constructor
+        self._steps_without_reward = 0
         # debug private attributes
         self._debug = debug
         # build Sequential tensorflow model
@@ -107,6 +110,9 @@ class QLearningAgent(Agent):
         # Q learning rewards
         self._qlearn_params = QLearningParams(wall_collision_value=-20, snake_collision_value=-20, reward_collision_value=20, other_value=-2)
 
+    def set_simulator(self, simulator):
+        self._simulator = simulator
+
     def update(self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None) -> list[int]:
         """
         - Given input from the simulation make a decision
@@ -116,20 +122,24 @@ class QLearningAgent(Agent):
         :param keys_pressed: a map of pressed keys (ignore, n/a)
         :return direction: int [0 - num_outputs)
         """
+        # expand the dimensions of the input
+        inputs = np.expand_dims(inputs, axis=0)
+        assert self._simulator is not None, "Simulator must be set using .set_simulator()"
         reward = self._get_reward(reward_collision, wall_collision)
         # Change internal states
         self._handle_collision(wall_collision)
-        reward = self._handle_reward(reward, reward_collision)
-
+        reward, restart = self._handle_reward(reward, reward_collision)
         self._handle_experience(reward, inputs)
         self._handle_training()
-        actions = self._model.predict(inputs.reshape((1, 10, 10, 4)))
+        actions = self._model.predict(inputs)
         action = np.argmax(actions)
         if np.random.rand() > self.epsilon and self._training_model:
             action = np.random.choice(np.arange(self.num_outputs))
         self._current_action = action
         if self._debug:
             print("Current Action:", action, "Current Reward:", reward, "Choices:", actions)
+        if restart:
+            self._request_restart()
         return action
 
     def _get_reward(self, reward_collision, wall_collision):
@@ -164,7 +174,9 @@ class QLearningAgent(Agent):
             self._collision_count += 1
 
     def _handle_reward(self, reward, reward_collision):
+        restart = False
         if reward_collision:
+            self._steps_without_reward = 0
             if self._rewarded_currently:
                 # if the car is sitting on a reward, punish it with "other" value
                 reward -= self._qlearn_params.reward - self._qlearn_params.other
@@ -172,12 +184,19 @@ class QLearningAgent(Agent):
                 self._last_reward_time = time.time()
             self._rewarded_currently = True
         else:
+            self._steps_without_reward += 1
             self._rewarded_currently = False
+            if self._steps_without_reward >= (self.num_inputs[0] * self.num_inputs[1]):
+                restart = True
+                reward += self._qlearn_params.wall
 
-        return reward
+        return reward, restart
 
     def _request_restart(self):
-        pass
+        if self._debug:
+            print("Requesting restart...")
+        self._simulator.reset()
+        self._steps_without_reward = 0
 
     def _train_model(self):
         """
@@ -189,17 +208,17 @@ class QLearningAgent(Agent):
         for i, experience in enumerate(batch):
             current_state = np.array(experience.current_state)
             # predict the q_values
-            q_value_prediction = self._model.predict(current_state.reshape((1, 10, 10, 4)))
+            q_value_prediction = self._model.predict(current_state)
             # set the target to be what the experience actually was
             q_target = experience.res_reward
             resulting_state = np.array(experience.next_state)
-            q_target = q_target + self.y * np.max(self._model.predict(resulting_state.reshape((1, 10, 10, 4)))[0])
+            q_target = q_target + self.y * np.max(self._model.predict(resulting_state)[0])
             # adjust the weights (no other q_vals are impacted)
             q_value_prediction[0][experience.current_action] = q_target
             X_train[i] = current_state
             y_train[i] = q_value_prediction[0]
 
-        self._model.fit(X_train, y_train, verbose=0, epochs=1, batch_size=self.batch_size)
+        self._model.fit(X_train, y_train, verbose=0, epochs=3, batch_size=self.batch_size)
 
     def _save_model_increment(self):
         """

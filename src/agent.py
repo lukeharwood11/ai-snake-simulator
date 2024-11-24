@@ -7,13 +7,19 @@ class Agent(ABC):
     def __init__(self, num_inputs, num_outputs):
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
+        self._simulator = None  # must set outside of constructor
+
+    def set_simulator(self, simulator):
+        self._simulator = simulator
 
     """
     - Abstract agent class
     """
 
     @abstractmethod
-    def update(self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None):
+    def update(
+        self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None
+    ):
         """
         - Given input from the simulation make a decision
         :param wall_collision: whether the model collided with the wall
@@ -48,7 +54,9 @@ class DefaultAgent(Agent):
     def __init__(self, num_inputs, num_outputs):
         super().__init__(num_inputs, num_outputs)
 
-    def update(self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None):
+    def update(
+        self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None
+    ):
         if keys_pressed[K_LEFT]:
             return 0
         if keys_pressed[K_UP]:

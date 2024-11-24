@@ -1,14 +1,16 @@
-import pygame
-import numpy as np
-import matplotlib.pyplot as plt
-from _global import FOOD_COLOR, SNAKE_COLOR
-from time import time
-from snake import Snake
-from utils import calculate_fps
-from gui.components import Board
-from agent import DefaultAgent
+from constants import FOOD_COLOR, SNAKE_COLOR
 from qlearn import QLearningAgent
+from gui.components import Board
+from utils import calculate_fps
+from agent import DefaultAgent
+from snake import Snake
+from time import time
+import numpy as np
+import pygame
 import os
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class Simulator:
@@ -20,7 +22,9 @@ class Simulator:
         self.caption = caption
         self.fps = fps
         self.clock = pygame.time.Clock()
-        self.board = Board(self.window, width, height, self.model.width, self.model.height)
+        self.board = Board(
+            self.window, width, height, self.model.width, self.model.height
+        )
 
         self.calc_fps = 0
         self.current_timestamp = None
@@ -82,11 +86,10 @@ class InputFrame:
         self.inputs.append(inputs)
 
     def get_input(self):
-        queue_size = len(self.inputs)
-        diff = self.m - queue_size
-        if queue_size < self.m:
-            self.inputs = ([self.inputs[0]] * diff) + self.inputs
-        return np.stack(self.inputs, axis=2).reshape((self.input_shape[0], self.input_shape[1], self.m))
+        _inputs = self.inputs
+        while len(_inputs) < self.m:
+            _inputs.append(_inputs[-1])
+        return np.concatenate(_inputs, axis=1)
 
     def clear(self):
         self.inputs.clear()
@@ -133,7 +136,11 @@ class SimulatorModel:
         For now, just start in the upper right corner
         :return:
         """
-        snake = Snake(start_pos=np.array([0, 0]), agent=self.agent, starting_direction=Snake.get_direction("right"))
+        snake = Snake(
+            start_pos=np.array([0, 0]),
+            agent=self.agent,
+            starting_direction=Snake.get_direction("right"),
+        )
         self.board[snake.start_pos[0], snake.start_pos[1]] = SNAKE_COLOR
         return snake
 
@@ -154,7 +161,6 @@ class SimulatorModel:
                 invalid = False
             elif self._debug:
                 invalid_count += 1
-                print("WARNING: invalid food position... {}".format(invalid_count))
         self.board[x, y] = FOOD_COLOR
         return np.array([x, y])
 
@@ -169,8 +175,13 @@ class SimulatorModel:
         food = np.all(self.food == snake_pos)
         self.input_frame.update(self.board.copy())
         self.board[self.food[0], self.food[1]] = 0
-        snake_hit = self.snake.update(self.board, inputs=self.input_frame.get_input(), keys_pressed=keys_pressed,
-                                      wall_hit=wall_hit, food=food)
+        snake_hit = self.snake.update(
+            self.board,
+            inputs=self.input_frame.get_input(),
+            keys_pressed=keys_pressed,
+            wall_hit=wall_hit,
+            food=food,
+        )
         refresh_food_pos = wall_hit or food or snake_hit
         if wall_hit or snake_hit:
             self.reset()
@@ -195,18 +206,22 @@ class SimulatorModel:
         WARNING - assumes that a GUI simulation is not being run
         :return:
         """
-        print("Starting Headless Simulation...")
+        log.info("Starting Headless Simulation...")
         run = True
         while run:
             run = not self.update_state(keys_pressed=None)
-        print("Simulation end.")
-        print("Saving Model...")
+        log.info("Simulation end.")
+        log.info("Saving Model...")
         self.handle_close_event()
         self.print_simulation_summary()
 
     def is_out_of_bounds(self, position):
-        return 0 > position[0] or position[0] >= self.width \
-               or position[1] < 0 or position[1] >= self.height
+        return (
+            0 > position[0]
+            or position[0] >= self.width
+            or position[1] < 0
+            or position[1] >= self.height
+        )
 
     def print_current_state(self):
         """
@@ -215,47 +230,12 @@ class SimulatorModel:
         pass
 
     def print_simulation_summary(self):
-        print("Simulation Summary:")
-        print("- Ran {} iterations.\n- Max Length: {}\n".format(self.iteration_num, self.high_score))
+        log.info("Simulation Summary:")
+        log.info(
+            "- Ran {} iterations.\n- Max Length: {}\n".format(
+                self.iteration_num, self.high_score
+            )
+        )
 
     def handle_close_event(self):
         self.agent.save_model(os.path.join("assets", "models"))
-
-
-def main():
-    INPUT_SHAPE = 10, 10, 4
-    NUM_OUTPUT = 4
-    # step 1 - create an Agent
-    agent_map = {
-        "user": DefaultAgent(INPUT_SHAPE, 4),
-        "qlearn": QLearningAgent(
-            alpha=0.01,
-            alpha_decay=0.01,
-            y=0.6,
-            epsilon=.98,
-            input_shape=INPUT_SHAPE,
-            num_actions=NUM_OUTPUT,
-            batch_size=64,
-            replay_mem_max=500,
-            save_after=100,
-            load_latest_model=False,
-            training_model=True,
-            model_path=None,
-            train_each_step=False,
-            debug=False
-        )
-    }
-    agent = agent_map['qlearn']
-    # step 2 - create a SimulatorModel
-    model = SimulatorModel(INPUT_SHAPE[0], INPUT_SHAPE[1], agent=agent, debug=True, max_iterations=500)
-    agent.set_simulator(simulator=model)
-    # step 3 - create a Simulator
-    # simulator = Simulator(width=800, height=800, model=model, fps=10, caption="AI Snake Simulator")
-
-    # final step - run the Simulator!
-    model.start_headless_simulation()
-    # simulator.start()
-
-
-if __name__ == "__main__":
-    main()

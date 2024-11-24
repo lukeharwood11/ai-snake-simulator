@@ -1,8 +1,6 @@
-import numpy as np
+from constants import FOOD_COLOR, SNAKE_COLOR
 import pygame
 import time
-
-from _global import FOOD_COLOR, SNAKE_COLOR
 
 
 class Board:
@@ -54,14 +52,35 @@ class Board:
             cell_color = (255, 0, 0)
         pygame.draw.rect(self.window, cell_color, rect=rect)
         if snake:
-            pygame.draw.circle(self.window, (255, 0, 0), rect.center, radius=self.cell_width/2, width=10)
+            center_x, center_y = rect.center
+            half_size = self.cell_width / 3  # Adjust size of diamond
+            diamond_points = [
+                (center_x, center_y - half_size),  # Top
+                (center_x + half_size, center_y),  # Right
+                (center_x, center_y + half_size),  # Bottom
+                (center_x - half_size, center_y),  # Left
+            ]
+            pygame.draw.polygon(
+                self.window,
+                (255, 0, 0),  # Red color
+                diamond_points,
+            )
         pygame.draw.rect(self.window, border_color, rect=rect, width=10 if snake else 1)
 
 
 class Label:
 
-    def __init__(self, position, text="", size=12, font=None, color=(0, 0, 0), refresh_count=None, background=None,
-                 anti_alias=False):
+    def __init__(
+        self,
+        position,
+        text="",
+        size=12,
+        font=None,
+        color=(0, 0, 0),
+        refresh_count=None,
+        background=None,
+        anti_alias=False,
+    ):
         """
         - Custom label class for rendering labels
         :param position:
@@ -95,7 +114,11 @@ class Label:
         if refresh_count is not None:
             self.refresh_count = refresh_count
         if self.refresh_count is None or self.current_count >= self.refresh_count:
-            self.text = self.original_text + text if not append_to_front else text + self.original_text
+            self.text = (
+                self.original_text + text
+                if not append_to_front
+                else text + self.original_text
+            )
             self.current_count = 0
         else:
             self.current_count += 1
@@ -112,9 +135,19 @@ class Label:
 
 class TimedLabel(Label):
 
-    def __init__(self, position, timeout: float, queue, text="", size=12, font=None, color=(0, 0, 0),
-                 refresh_count=None, background=None,
-                 anti_alias=False):
+    def __init__(
+        self,
+        position,
+        timeout: float,
+        queue,
+        text="",
+        size=12,
+        font=None,
+        color=(0, 0, 0),
+        refresh_count=None,
+        background=None,
+        anti_alias=False,
+    ):
         """
         :param position: (x, y)
         :param timeout: number of seconds for the label to last
@@ -126,15 +159,25 @@ class TimedLabel(Label):
         :param background:
         :param anti_alias:
         """
-        super().__init__(position=position, text=text, size=size, font=font, color=color, refresh_count=refresh_count,
-                         background=background, anti_alias=anti_alias)
+        super().__init__(
+            position=position,
+            text=text,
+            size=size,
+            font=font,
+            color=color,
+            refresh_count=refresh_count,
+            background=background,
+            anti_alias=anti_alias,
+        )
         self.time_created = time.time()
         self.timeout = timeout
         self.queue = queue
 
     def render(self, window, position=None):
         if (time.time() - self.time_created) < self.timeout:
-            text = self.font.render(self.text, self.anti_alias, self.color, self.background)
+            text = self.font.render(
+                self.text, self.anti_alias, self.color, self.background
+            )
             window.blit(text, self.position)
         else:
             self._remove_label()

@@ -1,5 +1,6 @@
+from constants import SNAKE_COLOR, FOOD_COLOR
 import numpy as np
-from _global import SNAKE_COLOR, FOOD_COLOR
+
 
 class SnakeCell:
 
@@ -14,7 +15,9 @@ class SnakeCell:
         self.previous_position = None
 
     def check_for_collision(self, head_pos=None):
-        assert self.head_cell or (head_pos is not None), "Head Position cannot be None for a non-head-cell"
+        assert self.head_cell or (
+            head_pos is not None
+        ), "Head Position cannot be None for a non-head-cell"
         if self.head_cell:
             head_pos = self.current_position
         else:
@@ -29,17 +32,26 @@ class SnakeCell:
     def shift(self, board, direction=None):
         self.previous_position = self.current_position
         if self.head_cell:
-            assert direction is not None, "Direction cannot be None for 'Head' SnakeCell"
+            assert (
+                direction is not None
+            ), "Direction cannot be None for 'Head' SnakeCell"
             self.current_position = self.current_position + direction
         else:
             self.current_position = self.next_cell.previous_position
 
-        if 0 > self.current_position[0] or self.current_position[0] >= board.shape[0] \
-                or self.current_position[1] < 0 or self.current_position[1] >= board.shape[1]:
+        if (
+            0 > self.current_position[0]
+            or self.current_position[0] >= board.shape[0]
+            or self.current_position[1] < 0
+            or self.current_position[1] >= board.shape[1]
+        ):
             # out of bounds, don't update...
             return
         # clear the position on the board where we were
-        if self.previous_position[0] < board.shape[1] and self.previous_position[1] < board.shape[1]:
+        if (
+            self.previous_position[0] < board.shape[1]
+            and self.previous_position[1] < board.shape[1]
+        ):
             board[self.previous_position[0], self.previous_position[1]] = 0
         # activate the position on the board where we are
         board[self.current_position[0], self.current_position[1]] = SNAKE_COLOR
@@ -74,6 +86,7 @@ class SnakeCell:
         if self.tail is not None:
             self.tail.print()
 
+
 class Snake:
 
     def __init__(self, start_pos, agent, starting_direction=2) -> None:
@@ -92,13 +105,13 @@ class Snake:
         :param direction: 'left', 'right', 'up', 'down'
         :return: int representation
         """
-        if direction == 'left':
+        if direction == "left":
             return 0
-        if direction == 'up':
+        if direction == "up":
             return 1
-        if direction == 'right':
+        if direction == "right":
             return 2
-        if direction == 'down':
+        if direction == "down":
             return 3
 
     def eat(self):
@@ -118,9 +131,9 @@ class Snake:
         :return:
         """
         snake_collision = self.head.check_for_collision()
-        if snake_collision:
-            print("Collision.")
-        direction = self.agent.update(inputs, food, wall_hit or snake_collision, keys_pressed)
+        direction = self.agent.update(
+            inputs, food, wall_hit or snake_collision, keys_pressed
+        )
         # 4 = current direction
         assert direction <= 4, "Direction {} out of bounds.".format(direction)
         self.current_direction = direction if direction != 4 else self.current_direction
@@ -145,5 +158,3 @@ class Snake:
         self.head.shift(board, direction=np.array([x, y]))
         if food:
             self.eat()
-            print("Length:", self.length)
-

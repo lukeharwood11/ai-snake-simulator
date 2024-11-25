@@ -11,7 +11,7 @@ log = logging.getLogger(__name__)
 log.info("Starting AI Snake Simulator...")
 
 
-def main(user: bool, headless: bool):
+def main(user: bool, headless: bool, model: str | None, training: bool):
     assert not (user and headless), "Cannot use both user and headless mode."
     # step 1 - create an Agent
     agent_map = {
@@ -27,8 +27,8 @@ def main(user: bool, headless: bool):
             replay_mem_max=500,
             save_after=100,
             load_latest_model=False,
-            training_model=True,
-            model_path=None,
+            training_model=training,
+            model_path=model,
             train_each_step=False,
             debug=False,
         ),
@@ -63,5 +63,16 @@ if __name__ == "__main__":
         help="Run in headless mode",
         default=False,
     )
+    parser.add_argument(
+        "--model",
+        help="The path to the model to use",
+        default=None,
+    )
+    parser.add_argument(
+        "--training",
+        action="store_true",
+        help="Whether to train the model",
+        default=False,
+    )
     args = parser.parse_args()
-    main(args.user, args.headless)
+    main(args.user, args.headless, args.model, args.training)

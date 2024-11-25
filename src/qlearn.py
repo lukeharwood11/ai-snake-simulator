@@ -10,6 +10,9 @@ import time
 # others
 from agent import Agent
 import numpy as np
+import logging
+
+log = logging.getLogger(__name__)
 
 
 class Experience:
@@ -90,7 +93,7 @@ class QLearningAgent(Agent):
         # initialize Agent parent class
         # add one to num_inputs for current speed
         super(QLearningAgent, self).__init__(
-            num_inputs=input_shape, num_outputs=num_actions
+            input_shape=input_shape, num_outputs=num_actions, training=training_model
         )
         # Q learning hyperparameters
         self.alpha = alpha
@@ -168,15 +171,9 @@ class QLearningAgent(Agent):
         if np.random.rand() > self.epsilon and self._training_model:
             action = np.random.choice(np.arange(self.num_outputs))
         self._current_action = action
-        if self._debug:
-            print(
-                "Current Action:",
-                action,
-                "Current Reward:",
-                reward,
-                "Choices:",
-                actions,
-            )
+        log.debug(
+            f"Current Action: {action}, Current Reward: {reward}, Choices: {actions}"
+        )
         if restart:
             self._request_restart()
         return action
@@ -227,7 +224,9 @@ class QLearningAgent(Agent):
         else:
             self._steps_without_reward += 1
             self._rewarded_currently = False
-            if self._steps_without_reward >= (self.num_inputs[0] * self.num_inputs[1]):
+            if self._steps_without_reward >= (
+                self.input_shape[0] * self.input_shape[1]
+            ):
                 restart = True
                 reward += self._qlearn_params.wall
 
@@ -244,7 +243,7 @@ class QLearningAgent(Agent):
         - Get [self.batch_size] number of experiences and train on those experiences
         """
         batch = self.replay_memory.get_random_experiences(self.batch_size)
-        X_train = np.zeros((self.batch_size, *self.num_inputs, 1))
+        X_train = np.zeros((self.batch_size, *self.input_shape, 1))
         y_train = np.zeros((self.batch_size, self.num_outputs))
         for i, experience in enumerate(batch):
             current_state = np.array(experience.current_state)
@@ -283,7 +282,9 @@ class QLearningAgent(Agent):
         self._model.save_weights(os.path.join(path, "latest.weights.h5"))
 
     def init_default_model_weights(self):
-        self._model.load_weights(os.path.join("src", "assets", "models", "latest.weights.h5"))
+        self._model.load_weights(
+            os.path.join("src", "assets", "models", "latest.weights.h5")
+        )
 
     def load_model(self, path):
         """

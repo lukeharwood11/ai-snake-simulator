@@ -4,9 +4,14 @@ from pygame import K_UP, K_LEFT, K_RIGHT, K_DOWN
 
 class Agent(ABC):
 
-    def __init__(self, num_inputs, num_outputs):
-        self.num_inputs = num_inputs
-        self.num_outputs = num_outputs
+    def __init__(
+        self, input_shape: tuple[int, int], num_outputs: int, training: bool = True
+    ):
+        # public
+        self.input_shape: tuple[int, int] = input_shape
+        self.num_outputs: int = num_outputs
+        self.training: bool = training
+        # internal
         self._simulator = None  # must set outside of constructor
 
     def set_simulator(self, simulator):
@@ -51,8 +56,8 @@ class Agent(ABC):
 
 class DefaultAgent(Agent):
 
-    def __init__(self, num_inputs, num_outputs):
-        super().__init__(num_inputs, num_outputs)
+    def __init__(self, input_shape: tuple[int, int], num_outputs: int):
+        super().__init__(input_shape, num_outputs, training=False)
 
     def update(
         self, inputs, reward_collision=False, wall_collision=False, keys_pressed=None

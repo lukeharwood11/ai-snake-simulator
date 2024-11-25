@@ -234,7 +234,7 @@ class QLearningAgent(Agent):
 
     def _request_restart(self):
         if self._debug:
-            print("Requesting restart...")
+            log.debug("Requesting restart...")
         self._simulator.reset()
         self._steps_without_reward = 0
 
@@ -279,17 +279,19 @@ class QLearningAgent(Agent):
         :param path: the path to the model
         :return: None
         """
-        self._model.save_weights(os.path.join(path, "latest.weights.h5"))
+        self._model.save_weights(os.path.join("src", "assets", "models", path))
 
     def init_default_model_weights(self):
         self._model.load_weights(
             os.path.join("src", "assets", "models", "latest.weights.h5")
         )
 
-    def load_model(self, path):
+    def load_model(self, path: str):
         """
         - Load the brain of the agent from some file (or don't)
         :param path: the path to the model
         :return: None
         """
-        self._model.load_weights(os.path.join("src", "assets", "models", path))
+        self._model.load_weights(
+            os.path.join("src", "assets", "models", path)
+        )

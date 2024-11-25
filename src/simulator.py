@@ -1,8 +1,6 @@
 from constants import FOOD_COLOR, SNAKE_COLOR
-from qlearn import QLearningAgent
 from gui.components import Board
 from utils import calculate_fps
-from agent import DefaultAgent
 from snake import Snake
 from time import time
 import numpy as np
@@ -238,4 +236,4 @@ class SimulatorModel:
         )
 
     def handle_close_event(self):
-        self.agent.save_model(os.path.join("assets", "models"))
+        self.agent.save_model("latest.weights.h5")
